@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Диспетчерская — Москва Билайн (UI-APP-3, Vue3+real solver)</title>
+<link rel="stylesheet" href="./vendor/leaflet.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+<div id="spin-overlay" v-if="busy||spin.on" @click="toggleLog" title="клик — свернуть/развернуть профайлер"><div class="spin-box"><div class="spinner"></div><div>считаю... {{spin.sec}}с {{spin.label}}</div></div></div>
+<header>
+  <b>Диспетчерская</b>
+  <select v-model="proj"><option>Москва Билайн</option></select>
+  <span id="proj-info" v-html="projInfo"></span>
+  <nav id="tabs">
+    <button class="tab" :class="{on:tab==='map'}" @click="tab='map'">Карта</button>
+    <button class="tab" :class="{on:tab==='grid'}" @click="tab='grid'">Сетка-таймлайн</button>
+    <button class="tab" :class="{on:tab==='analytics'}" @click="tab='analytics'">Аналитика <span class="ok-badge" style="background:#2ca02c;color:#fff;border-radius:4px;padding:0 5px;font-size:11px">REAL</span></button>
+    <button class="tab" :class="{on:tab==='log'}" @click="tab='log'">Лог</button>
+  </nav>
+</header>
+<div id="filterbar">
+  <input id="f-q" v-model="flt.q" placeholder="поиск: id / адрес / тип" @input="refresh">
+  <select id="f-team" v-model="flt.team" @change="onFilterTeam">
+    <option value="all">все бригады</option>
+    <option v-for="t in teams" :value="t.id">{{t.id}}</option>
+    <option value="UNASSIGNED">неназначенные</option>
+  </select>
+  <select id="f-district" v-model="flt.district" @change="refresh">
+    <option value="all">все районы</option>
+    <option v-for="d in districts" :value="d">{{d}}</option>
+  </select>
+  <label v-for="s in statuses" :key="s"><input type="checkbox" :value="s" v-model="flt.status" @change="refresh"> {{stName(s)}}</label>
+  <label title="показывать отменённые/перенесённые"><input type="checkbox" v-model="flt.showCancelled" @change="refresh"> отмен./перен.</label>
+  <span id="boot-err" class="err">{{bootErr}}</span>
+</div>
+<div id="bootlog" :class="{collapsed:!logOpen}" title="плавающий профайлер: этапы с wall (3 знака, реальный замер). Клик по спиннеру — свернуть/развернуть">
+  <div class="bootlog-head" @click="toggleLog" style="cursor:pointer" title="клик — свернуть/развернуть">Профайлер · live · {{logOpen?"—":"+"}} <span class="bootlog-x" @click.stop="logOpen=false" title="закрыть панель" style="float:right;cursor:pointer;padding:0 4px">✕</span></div>
+  <div v-if="logOpen">
+  <div v-if="!bootLog.length" class="muted">старт…</div>
+  <div v-for="(l,i) in bootLog" :key="i" class="bootline">{{l}}</div>
+  </div>
+</div>
+<div id="timemachine-global">
+  <label>🕰 <span id="clock">{{fmt(now)}}</span></label>
+  <input id="scrub" type="range" min="480" max="1320" step="5" v-model.number="now" @input="onTime">
+  <button @click="now=T0;onTime()" title="в начало">⏮ начало</button>
+  <button @click="stepTime(-15)" title="назад 15 мин">◀ шаг</button>
+  <button @click="nextEvent" title="следующее событие">•</button>
+  <button @click="stepTime(15)" title="вперёд 15 мин">шаг ▶</button>
+  <button @click="now=T1;onTime()" title="в конец">конец ⏭</button>
+  <span class="hint">тайм-машина: ASSIGNED→IN_PROGRESS→DONE · {{eventInfo}}</span>
+</div>
+<main>
+  <section id="center">
+      <div id="view-map" v-show="tab==='map'">
+      <div id="map-tools"><label title="авто-масштаб карты при смене данных/выбора"><input type="checkbox" v-model="autoFit" @change="autoFitChanged"> Авто</label></div>
+      <div id="map"></div>
+    </div>
+    <div id="view-grid" v-show="tab==='grid'"><div id="gantt">
+      <div class="g-head"><div class="g-corner">бригада \ время</div><div class="g-axis" :style="{width:axisW+'px'}">
+        <span class="g-tick" v-for="t in axisTicks" :style="{left:((t-T0)*PXMIN)+'px'}">{{fmt(t)}}</span>
+      </div></div>
+      <div class="g-body">
+        <div class="g-row" v-for="row in gridRows" :key="row.id" :class="{selteam:row.id===selTeam}">
+          <div class="g-label">{{row.id}}</div>
+          <div class="g-lane" :style="{width:axisW+'px'}">
+            <template v-if="row.kind==='team'">
+              <template v-for="r in row.blocks" :key="r.id">
+                <div v-if="isWaiting(r)" class="g-block g-wait" :class="{sel:r.id===selReq,frozen:frozenIds.has(r.id)}"
+                  :title="'⏳ ожидание '+r.id+' '+fmt(r.plan.arrive)+'–'+fmt(r.plan.start)"
+                  :style="{left:((r.plan.arrive-T0)*PXMIN)+'px',width:(Math.max(8,(r.plan.start-r.plan.arrive)*PXMIN))+'px'}"
+                  @click="selectReq(r.id)">⏳{{shortId(r.id)}}</div>
+                <div v-if="r.plan" class="g-win" :class="{sel:r.id===selReq,late:r.plan.end>r.window[1],frozen:frozenIds.has(r.id)}"
+                :title="r.id+' окно '+fmt(r.window[0])+'–'+fmt(r.window[1])+' · работы '+fmt(r.plan.start)+'–'+fmt(r.plan.end)+(r.plan.end>r.window[1]?' · ⚠ конец после окна +'+(r.plan.end-r.window[1])+' мин':'')"
+                :style="{left:((r.window[0]-T0)*PXMIN)+'px',width:(Math.max(10,(r.window[1]-r.window[0])*PXMIN))+'px'}"
+                @click="selectReq(r.id)"><div class="g-work"
+                  :style="{left:((Math.max(r.plan.start,r.window[0])-r.window[0])*PXMIN)+'px',width:(Math.max(4,(r.plan.end-Math.max(r.plan.start,r.window[0]))*PXMIN))+'px',background:color(effStatus(r))}"></div><span class="g-cap">{{shortId(r.id)}}</span></div>
+              </template>
+              </template>
+            <template v-else>
+              <div v-for="r in row.blocks" :key="r.id" class="g-block pool" :class="{sel:r.id===selReq}"
+                :title="r.id+' '+r.status" :style="{background:color(r.status)}" @click="selectReq(r.id)">{{shortId(r.id)}}</div>
+            </template>
+            <div class="g-now" :style="{left:((now-T0)*PXMIN)+'px'}"></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <div id="view-analytics" v-show="tab==='analytics'">
+      <div class="an-grid">
+        <div class="card"><h3>Генератор <span class="mock-badge">МОК-данные → REAL-решение</span></h3>
+          <div class="row">
+            <button @click="preset(100,12)">100 орг</button>
+            <button @click="preset(1000,40)">1000</button>
+            <button @click="preset(10000,120)">10000-демо</button>
+          </div>
+          <label>N заявок <input v-model.number="genN" type="number" min="1" max="20000"></label>
+          <label>M бригад <input v-model.number="genM" type="number" min="1" max="200"></label>
+          <label>seed генератора сценария <input v-model.number="seed" type="number" title="seed генератора сценария (синтетика: координаты, окна, типы)"></label>
+          <div class="row"><button @click="doGen" :disabled="busy">Сгенерировать N/M и решить</button></div>
+          <div class="muted">{{genInfo}}</div>
+        </div>
+        <div class="card"><h3>Распределение <span class="ok-badge" style="background:#2ca02c;color:#fff;border-radius:4px;padding:0 5px;font-size:11px">REAL</span></h3>
+          <label>Стратегия <select v-model="strategy">
+            <option v-if="!strategies.length" value="S0">S0 production narrow-first (default)</option>
+            <option v-for="s in strategies" :value="s.id">{{s.id}} {{s.title}} (toy done={{s.profile.done}})</option>
+          </select></label>
+          <label>seed решения (S0) <input v-model.number="seed" type="number" title="seed решения (порядок перебора S0)"></label>
+          <label title="CPU = Q-lookup/matrix (REG.assign); GPU = fused-batch (roadgraph GPU_QSSSP/GPU_FUSED)">Движок
+            <label><input type="radio" value="cpu" v-model="engine"> CPU</label>
+            <label :title="gpuReason"><input type="radio" value="gpu" v-model="engine" :disabled="engineInfo && !engineInfo.gpu.available"> GPU{{engineInfo && !engineInfo.gpu.available ? ' (недоступен)' : ''}}</label>
+          </label>
+          <div class="muted" v-if="gpuReason && engineInfo && !engineInfo.gpu.available">{{gpuReason}}</div>
+          <div class="muted">{{rgStatus}}<span v-if="rgPct!=null"> · реальных {{rgPct}}%</span></div>
+          <div class="muted">Квант: ui/q/ (ClusterBuild матрицы + QuantFull s1000/r3600 car/foot + печёные q-треки; CSR не грузится никогда)</div>
+          <label><input type="checkbox" v-model="toggles.warehouse"> склад/оборудование (inventory)</label>
+          <label><input type="checkbox" v-model="toggles.footTransit"> транзит пешим (foot+ОТ)</label>
+          <div class="prog"><div :style="{width:Math.round(prog*100)+'%'}"></div></div>
+          <div class="row"><button @click="doSolve" :disabled="busy">Пересчитать остаток</button></div>
+          <div class="muted">От текущего времени тайм-машины: DONE/IN_PROGRESS замораживаются сервером (/api/replan).</div>
+          <div class="metrics" v-html="solveMetrics"></div>
+        </div>
+        <div class="card"><h3>Сравнение методов A/B <span class="ok-badge" style="background:#2ca02c;color:#fff;border-radius:4px;padding:0 5px;font-size:11px">REAL</span></h3>
+          <div v-if="runs.length<2" class="muted">Пока нет двух пересчётов.</div>
+          <table v-else class="ab"><tr><th>Показатель</th><th>Вариант А ({{runs[runs.length-2].strategy}})</th><th>Вариант Б ({{runs[runs.length-1].strategy}})</th><th>Разница (Б−А)</th></tr>
+            <tr><td>выполнено заявок</td><td>{{runs[runs.length-2].done}}</td><td>{{runs[runs.length-1].done}}</td><td>{{diff(runs[runs.length-1].done-runs[runs.length-2].done)}}</td></tr>
+            <tr><td>пробег, км</td><td>{{runs[runs.length-2].km}}</td><td>{{runs[runs.length-1].km}}</td><td>{{(runs[runs.length-1].km-runs[runs.length-2].km).toFixed(1)}}</td></tr>
+            <tr><td>время счёта, мс</td><td>{{runs[runs.length-2].wall_ms}}</td><td>{{runs[runs.length-1].wall_ms}}</td><td>{{(runs[runs.length-1].wall_ms-runs[runs.length-2].wall_ms).toFixed(1)}}</td></tr>
+            <tr><td>распределение/дорога, мс</td><td>{{runs[runs.length-2].assign_ms}}/{{runs[runs.length-2].travel_ms}}</td><td>{{runs[runs.length-1].assign_ms}}/{{runs[runs.length-1].travel_ms}}</td><td>—</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div id="view-log" v-show="tab==='log'">
+      <div class="card"><h3>Лог пересчётов <span class="ok-badge" style="background:#2ca02c;color:#fff;border-radius:4px;padding:0 5px;font-size:11px">REAL</span></h3>
+        <div v-if="!runs.length" class="muted">Пусто — нажми «Пересчитать остаток».</div>
+        <div v-for="(r,i) in runs" :key="i" class="logline">#{{i+1}} {{r.clock}} {{r.strategy}} [{{r.engine||'cpu'}}] done={{r.done}} teams={{r.teams_used}} km={{r.km}} wall={{r.wall_ms}}ms (assign={{r.assign_ms}} travel={{r.travel_ms}}<span v-if="r.rgjs_ms!=null"> rgjs={{r.rgjs_ms}} {{r.rg_real}}/{{r.rg_total}}</span>) Δdone={{i?diff(r.done-runs[i-1].done):'—'}} Δkm={{i?((r.km-runs[i-1].km).toFixed(1)):'—'}} <span class="ok-badge" style="background:#2ca02c;color:#fff;border-radius:4px;padding:0 5px;font-size:11px">REAL</span></div>
+      </div>
+    </div>
+  </section>
+  <aside id="side">
+    <div class="card"><h3>Слои</h3>
+      <div id="legend">
+        <div><span class="pin pin-bld">🏢</span> офис <span class="pin pin-req">📋</span> заявка <span class="pin pin-team-foot">🚶</span> пешая <span class="pin pin-team-bike">🚲</span> вело <span class="pin pin-team-auto">🚐</span> авто <span class="pin pin-bld">☕</span> кафе <span class="pin pin-bld">🏠</span> дом <span class="tstop-dot">•</span> остановка ОТ (только transit-бригада)</div>
+        <div class="lg-row"><b>Статусы:</b> <span style="color:#9e9e9e">■ не распределена</span> <span style="color:#1f77b4">■ распределена</span> <span style="color:#ff7f0e">■ выполняется</span> <span style="color:#2ca02c">■ выполнено</span> <span style="color:#7f0000">■ невозможна</span> <span style="color:#9467bd">■ перенесена</span> <span>⏳ ожидание</span> <span>✔ done/frozen</span></div>
+       </div>
+      <label><input type="checkbox" v-model="layers.off" @change="refresh"> Офисы</label>
+      <label><input type="checkbox" v-model="layers.req" @change="refresh"> Заявки</label>
+      <label><input type="checkbox" v-model="layers.team" @change="refresh"> Бригады</label>
+      <label><input type="checkbox" v-model="layers.cafe" @change="refresh"> Кафе</label>
+      <label><input type="checkbox" v-model="layers.route" @change="refresh"> Маршруты (цвет=порядок перегона, пунктир=схематично)</label>
+      <label><input type="checkbox" v-model="layers.transit" @change="refresh"> Остановки ОТ (по требованию: только transit-бригада, тултип)</label>
+    </div>
+    <div class="card"><h3>Рейс</h3><div id="route-info" v-html="routeInfo"></div><div class="muted">TEAM-SE-08: 12 перегонов, перегоны 62/60/41 мин вперемешку с 1–5 мин — синтетические точки плотные (Гаусс вокруг баз), реальные адреса разреженнее; 12 заявок/бригаду при плотной застройке — норма.</div></div>
+    <div class="card"><h3>Заявка</h3>
+      <div class="muted">{{reqStatus}}</div>
+      <div class="req-times">{{reqTimes}}</div>
+      <div class="reason" v-if="reqReason">{{reqReason}}</div>
+      <label>Адрес<input v-model="reqForm.addr"></label>
+      <label>Окно<input v-model="reqForm.ws" placeholder="чч:мм"> – <input v-model="reqForm.we" placeholder="чч:мм"></label>
+      <label>Тип<input v-model="reqForm.type"></label>
+      <label>Контакт<input v-model="reqForm.contact"></label>
+      <label>Описание<textarea v-model="reqForm.desc" rows="2"></textarea></label>
+      <div class="row"><button @click="reqSave">Сохранить</button><button @click="reqDel">Удалить</button><button @click="reqCancel">Отменить</button><button @click="reqPostpone">Отложить +1ч</button></div>
+    </div>
+    <div class="card"><h3>Бригада</h3>
+      <div class="teamlist">
+        <div v-for="t in sortedTeams" :key="t.id" class="teamrow" :class="{sel:t.id===selTeam}" @click="selectTeam(t.id)">{{teamIcon(t.vehicle)}} {{t.id}} · {{(byTeam[t.id]||[]).length}}</div>
+      </div>
+      <div class="muted">{{teamStatus}}</div>
+      <div class="muted">{{teamEquip}}</div>
+      <label><input type="checkbox" v-model="teamForm.connect"> connect (1)</label>
+      <label><input type="checkbox" v-model="teamForm.cable"> cable_repair (2)</label>
+      <label><input type="checkbox" v-model="teamForm.gig"> gigabit_climb (4)</label>
+      <label>Смены<input v-model="teamForm.shift" placeholder="08:00-20:00"></label>
+      <label>Личное дело: заметка<input v-model="teamForm.note"></label>
+      <label>Личное дело: телефон<input v-model="teamForm.phone"></label>
+      <div class="row"><button @click="teamSave">Сохранить</button></div>
+    </div>
+    <div class="card cafe-card"><h3 @click="cafeOpen=!cafeOpen" style="cursor:pointer" title="свернуть/развернуть">Кафе (обед) <span class="mock-badge">МОК</span> {{cafeOpen?"—":"+"}}</h3>
+      <div v-show="cafeOpen">
+      <select v-model="selCafe"><option v-for="c in cafes" :value="c.id">{{c.id}}</option></select>
+      <label>Метка<input v-model="cafeForm.label"></label>
+      <label>Окно обед<input v-model="cafeForm.lunch" placeholder="12:00-15:00"></label>
+      <div class="row"><button @click="cafeSave">Сохранить</button><button @click="cafeAdd">+ Добавить</button><button @click="cafeDel">Удалить</button></div>
+      </div>
+    </div>
+  </aside>
+</main>
+</div>
+<script src="./vendor/leaflet.js"></script>
+<script src="./vendor/vue.global.js"></script>
+<script src="app.js"></script>
+<script>
+/* UI-VENDOR fallback: vendor/ локально — сырые {{...}} затираются без Vue */
+(function(){
+  if (window.Vue) return;
+  var clock = document.getElementById("clock");
+  if (clock) clock.textContent = "08:00";
+  var be = document.getElementById("boot-err");
+  if (be) be.textContent = "Vue vendor недоступен. Проверь ui/vendor/vue.global.js и открой через сервер.";
+  var walker = document.createTreeWalker(document.getElementById("app"), NodeFilter.SHOW_TEXT);
+  var nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(function(n){
+    if (n.nodeValue && n.nodeValue.indexOf("{{") !== -1) {
+      n.nodeValue = n.nodeValue
+        .replace("{{fmt(now)}}", "08:00")
+        .replace("{{eventInfo}}", "тайм-машина")
+        .replace("{{bootErr}}", "")
+        .replace("{{stName(s)}}", "статус")
+        .replace(/\{\{[^}]*\}\}/g, "");
+    }
+  });
+})();
+</script>
+</body>
+</html>

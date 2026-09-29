@@ -1,0 +1,109 @@
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;font-size:14px}
+header{display:flex;gap:10px;align-items:center;padding:8px 12px;background:#1a1a2e;color:#fff}
+header nav{display:flex;gap:6px;margin-left:12px}
+.tab{background:#333;color:#fff;border:0;border-radius:6px;padding:6px 12px;cursor:pointer}
+.tab.on{background:#ffb86c;color:#111}
+.mock{color:#ffb86c;font-size:12px}.err{color:#b00;font-size:12px}
+#filterbar{display:flex;gap:10px;align-items:center;padding:6px 12px;background:#f0f0f5;border-bottom:1px solid #ccc;flex-wrap:wrap;font-size:13px}
+main{display:flex;height:calc(100vh - 96px)}
+#center{flex:1;display:flex;flex-direction:column;min-width:0}
+#view-map{flex:1;display:flex;flex-direction:column;min-height:0}#map-tools{display:flex;gap:8px;align-items:center;padding:4px 8px;background:#fafafa;border-bottom:1px solid #ddd;font-size:13px}#map-tools label{display:flex;gap:4px;align-items:center;cursor:pointer}#map{flex:1;min-height:0}
+#timemachine-global{display:flex;gap:10px;align-items:center;padding:8px 12px;background:#eee;border-bottom:1px solid #ccc}
+#timemachine-global button{cursor:pointer;border:1px solid #ccc;border-radius:6px;padding:4px 8px;background:#fff}
+.g-block.g-wait{background:repeating-linear-gradient(45deg,#bdbdbd 0 4px,#fff 4px 8px);color:#111;border:1px dashed #666}
+.pin-wait{background:#fff8e1;border-color:#ff8f00}
+#scrub{flex:1}.hint{color:#666;font-size:12px}#clock{font-weight:bold;font-variant-numeric:tabular-nums}
+#view-grid{flex:1;overflow:auto;background:#fff}#gantt{min-width:max-content}
+.g-head{display:flex;position:sticky;top:0;background:#fafafa;z-index:2}.g-corner{width:120px;min-width:120px;font-size:12px;color:#555;padding:4px}
+.g-axis{position:relative;height:22px}.g-tick{position:absolute;top:2px;font-size:11px;color:#666;border-left:1px solid #ddd;padding-left:2px}
+.g-body{display:flex;flex-direction:column}.g-row{display:flex;border-top:1px solid #eee}
+.g-label{width:120px;min-width:120px;font-size:12px;padding:4px;background:#fafafa}
+.g-lane{position:relative;height:30px;background:repeating-linear-gradient(90deg,#fff 0 96px,#f7f7f7 96px 97px)}
+.g-block{position:absolute;top:4px;height:22px;border-radius:4px;color:#fff;font-size:11px;padding:2px 4px;cursor:pointer;overflow:hidden;white-space:nowrap}
+.g-block.pool{position:static;display:inline-block;margin:4px 2px}
+.g-block.sel{outline:3px solid gold}.g-now{position:absolute;top:0;bottom:0;width:2px;background:#111}
+#side{width:360px;overflow-y:auto;background:#fafafa;border-left:1px solid #ccc;padding:8px}
+.card{border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:8px;background:#fff}
+.card h3{margin:0 0 6px;font-size:13px;text-transform:uppercase;color:#555}
+.card label{display:block;margin:4px 0}.card input,.card select,.card textarea{width:100%}
+.card input[type=checkbox]{width:auto}.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.muted{color:#666;font-size:12px}.stub{padding:20px;color:#666}
+.mock-badge{background:#ffb86c;color:#111;border-radius:4px;padding:0 5px;font-size:11px}
+.an-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px;padding:8px;overflow:auto}
+.prog{height:10px;background:#e5e5e5;border-radius:5px;overflow:hidden;margin:6px 0}
+.prog>div{height:100%;width:0;background:#1f77b4;transition:width .15s}
+.metrics{font-size:13px;margin-top:6px}.metrics b{font-variant-numeric:tabular-nums}
+table.ab{border-collapse:collapse;width:100%;font-size:12px;margin-top:6px}
+table.ab th,table.ab td{border:1px solid #ddd;padding:3px 6px;text-align:right}
+table.ab th:first-child,table.ab td:first-child{text-align:left}
+.logline{border-bottom:1px solid #eee;padding:3px 0;font-size:12px;font-variant-numeric:tabular-nums}
+.reason{font-size:12px;color:#7f0000;margin:4px 0}
+.pin{width:20px;height:20px;font-size:15px;line-height:20px;text-align:center;background:#fff;border:1px solid #333;border-radius:50%;box-shadow:0 0 2px rgba(0,0,0,.4)}
+.pin-off{background:#e3f2fd}.pin-team{background:#fff3e0}.pin-cafe{background:#f3e5f5}.pin-home{background:#efebe9}
+/* UI-FIX5.5 формы: заявки — кружки, здания — квадратики, бригады — по транспорту */
+.pin-req{border-radius:50%}
+.pin-bld{border-radius:4px}
+.pin-team-foot{background:#e8f5e9}.pin-team-bike{background:#e3f2fd}.pin-team-auto{background:#fff3e0}
+.teamlist{max-height:180px;overflow-y:auto;border:1px solid #ddd;border-radius:6px}
+.teamrow{padding:4px 6px;font-size:12px;cursor:pointer;border-bottom:1px solid #eee}
+.teamrow:hover{background:#f0f0f5}.teamrow.sel{background:#ffe0b2;font-weight:bold}
+.g-block.frozen{filter:grayscale(.7);opacity:.75}
+/* UI-FIX6: окно (контур) + вложенный прямоугольник реальных работ (start–end); late = конец после окна */
+.g-win{position:absolute;top:4px;height:22px;border:1px solid #999;border-radius:4px;background:rgba(0,0,0,.05);cursor:pointer;overflow:hidden}
+.g-win .g-work{position:absolute;top:0;bottom:0;border-radius:2px}
+.g-win .g-cap{position:absolute;left:3px;top:2px;font-size:11px;color:#111;white-space:nowrap;pointer-events:none}
+.g-win.sel{outline:3px solid gold}
+.g-win.late{border-color:#d62728;box-shadow:inset -4px 0 0 #d62728}
+.g-win.frozen{filter:grayscale(.7);opacity:.75}
+.g-row.selteam .g-label{background:#ffe0b2;font-weight:bold}
+.g-row.selteam .g-lane{background-color:#fff8e1}
+.req-times{font-size:12px;color:#111;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:3px 6px;margin:4px 0;font-variant-numeric:tabular-nums}
+#legend{font-size:12px;color:#333;display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
+#legend .pin{display:inline-block;vertical-align:middle}
+#legend .lg-row{line-height:1.7}
+/* UI-FIX10: спиннер в углу + блокировка дабл-кликов; попапы .85/hover 1 */
+#spin-overlay{position:fixed;top:12px;right:12px;z-index:9999;pointer-events:all}
+.spin-box{display:flex;gap:8px;align-items:center;background:rgba(20,20,30,.92);color:#fff;border-radius:8px;padding:8px 12px;font-size:13px}
+.spinner{width:18px;height:18px;border-radius:50%;border:3px solid #555;border-top-color:#ffb86c;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.leaflet-popup-content-wrapper{opacity:.85}
+.leaflet-popup-content-wrapper:hover{opacity:1}
+.leaflet-popup{cursor:pointer}
+/* UI-ARROWS: треугольники направления (SVG в divIcon, цвет наследует ногу) */
+.leg-arrow{display:flex;align-items:center;justify-content:center;pointer-events:none}
+.leg-arrow svg{display:block;filter:drop-shadow(0 0 1px rgba(255,255,255,.9))}
+/* UI-FIX11: выделение ноги — анимация вместо скрытия.
+   Выбранная нога: базовый polyline (класс leg-sel) + белый бегущий пунктир
+   (класс leg-sel-march, 3-кадровый цикл legmarch через stroke-dashoffset).
+   Остальные ноги: класс leg-dim (тускнеют, не исчезают). Esc — снять выделение. */
+@keyframes legmarch{0%{stroke-dashoffset:24px}50%{stroke-dashoffset:12px}100%{stroke-dashoffset:0}}
+path.leg-sel-march{animation:legmarch 0.9s linear infinite}
+@keyframes legpulse{0%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.65}100%{transform:scale(1);opacity:1}}
+.leg-arrow-sel{animation:legpulse 0.9s ease-in-out infinite}
+path.leg-dim{opacity:.22}
+/* UI-FIX14: плавающий профайлер (dock справа/снизу), сворачивается от спиннера.
+   Содержимое строк не менялось (stage timings как есть из UI-FIX13). */
+#bootlog{position:fixed;right:12px;bottom:12px;width:min(430px,42vw);max-height:38vh;overflow-y:auto;background:#101018;color:#d7f9d7;font-size:12px;padding:6px 12px;border:1px solid #333;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.45);z-index:9998;font-variant-numeric:tabular-nums}
+#bootlog .bootlog-head{font-weight:bold;color:#ffb86c;font-size:11px;text-transform:uppercase;cursor:pointer}
+/* UI-FIX15: крестик закрытия профайлера (работает через @click.stop). */
+#bootlog .bootlog-x{color:#fff;opacity:.7}
+#bootlog .bootlog-x:hover{opacity:1;color:#ff8080}
+#bootlog .bootline{white-space:nowrap}
+#bootlog.collapsed{max-height:30px;overflow:hidden}
+#spin-overlay{cursor:pointer}
+/* UI-FIX13 п.2: бейдж пропущенной ноги (линию в пустоту не рисуем). */
+.leg-skip{background:#fdecea;border:1px solid #d62728;color:#7f0000;border-radius:4px;padding:3px 6px;margin:4px 0;font-size:12px}
+/* UI-FIX13 п.3: выбранная нога поверх + анимация; приглушённые видны. */
+.segrow.sel{background:#fff3d6}
+path.leg-sel{stroke-width:7}
+/* UI-FIX16: жирные концы выбранной ноги (×1.5 + обводка) + бейдж причины schematic. */
+.pin-endpoint{width:30px;height:30px;font-size:22px;line-height:30px;text-align:center;background:#fff;border:3px solid #111;border-radius:50%;box-shadow:0 0 6px rgba(0,0,0,.7)}
+.pin-endpoint-start{border-color:#111;background:#fff8e1}
+.pin-endpoint-end{border-color:#111;background:#e8f5e9}
+.leg-schem{background:#fff8e1;border:1px solid #ff8f00;color:#5d4037;border-radius:4px;padding:3px 6px;margin:4px 0;font-size:12px}
+/* UI-FIX17: TransitLayer — маленькая иконка остановок + бейдж кластера. */
+.tstop-dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:#42a5f5;border:1px solid #0d47a1;vertical-align:middle}
+.tstop-cl{background:#e3f2fd;border:1px solid #0d47a1;color:#0d47a1;border-radius:8px;padding:0 4px;font-size:11px;white-space:nowrap}
+/* UI-FIX24 п.7: панель кафе не перекрывается профайлером (отступ снизу сайдбара + сворачиваемый блок). */
+#side{padding-bottom:230px}
+.cafe-card h3{cursor:pointer;user-select:none}

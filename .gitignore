@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.log
+pr.txt
+zz*.png
+serve.log
