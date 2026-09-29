@@ -2,40 +2,120 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NumFast — диспетчерская выездных инженеров</title>
-<style>
-  :root { --bg:#0f1117; --fg:#e9edf6; --fg2:#9aa3ba; --acc:#ff0053; --acc2:#fc3777; }
-  * { box-sizing: border-box; }
-  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
-         background:var(--bg); color:var(--fg);
-         font:16px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif; }
-  .box { max-width:720px; padding:48px; }
-  h1 { margin:0 0 6px; font-size:30px; letter-spacing:-.5px; }
-  .sub { color:var(--acc2); font-weight:600; margin-bottom:26px; }
-  p { color:var(--fg2); margin:0 0 14px; }
-  code { color:var(--fg); background:rgba(255,255,255,.07); padding:1px 6px; border-radius:3px;
-         font-family:ui-monospace, Consolas, monospace; font-size:14px; }
-  .k { display:inline-block; margin:4px 8px 0 0; padding:6px 12px; border-radius:5px;
-       border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04);
-       color:var(--fg); font-size:14px; }
-</style>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Диспетчерская лаборатория · NumFast roadgraph</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%23ff0053'/%3E%3Cpath d='M4 11V5h2l2 3 2-3h2v6h-1.6V7.4L8.9 10 7.1 7.4V11z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="./styles.css?v=80">
 </head>
 <body>
-  <div class="box">
-    <h1>NumFast — диспетчерская выездных инженеров</h1>
-    <div class="sub">ЛЦТ 2026 · задача 3 · Билайн Бизнес</div>
-    <p>Стенд разворачивается. Собственный счётчик маршрутов на библиотеке numfast:
-       квантованный дорожный граф Центрального Федерального округа, распределение
-       заявок и построение маршрутов считаются прямо в браузере — без бэкенда,
-       без внешних API.</p>
-    <p>Полная версия стенда — в каталоге <code>site/</code> репозитория.</p>
-    <div>
-      <span class="k">97 / 100 заявок</span>
-      <span class="k">323.6 км по дорогам</span>
-      <span class="k">0 нарушений</span>
-      <span class="k">98.9 % времён точных</span>
+<div id="app">
+
+  <div class="bar">
+    <div class="logo"><b>NF</b><span>диспетчерская лаборатория</span></div>
+
+    <div class="seg" id="viewmode">
+      <button data-v="split" class="on">Сплит</button>
+      <button data-v="grid">Сетка</button>
+      <button data-v="map">Карта</button>
+    </div>
+
+    <select id="scenario" title="набор данных"></select>
+
+    <button id="density" title="плотность строк">Компактно</button>
+    <button id="basemap" title="подложка">Esri Street</button>
+    <button id="traffic" title="пробки k(час выезда), city-uniform, ymarchive 2015">Пробки вкл</button>
+
+    <div class="sp"></div>
+
+    <div class="chip" id="chip-map"><span class="dot"></span><span id="chip-map-t">карта 13 МБ</span></div>
+    <div class="chip" id="chip-route"><span class="dot"></span><span id="chip-route-t">маршруты не считаны</span></div>
+    <div class="chip" id="chip-solve"><span class="dot"></span><span id="chip-solve-t">решение не готово</span></div>
+
+    <button id="run" class="on">Считать</button>
+    <button id="reroute" title="пересчёт от текущего времени">Пересчёт</button>
+  </div>
+
+  <div class="body">
+    <!-- ================================================ LEFT RAIL -->
+    <aside class="rail">
+      <div class="panel" style="flex:0 0 auto">
+        <h3>Итог <span class="k" id="kpi-sub">—</span></h3>
+        <div class="kpis" id="kpis"></div>
+      </div>
+
+      <div class="panel" style="flex:0 0 auto">
+        <h3>Фильтр</h3>
+        <div class="filters" id="filters"></div>
+      </div>
+
+      <div class="panel" style="flex:1 1 auto">
+        <h3>Бригады <span class="k" id="teams-n">—</span></h3>
+        <div class="filters" style="padding-bottom:6px">
+          <div class="pill" id="f-selall">все</div>
+          <div class="pill" id="f-used">только с работой</div>
+        </div>
+        <div class="scroll list" id="teams" style="flex:1 1 auto"></div>
+      </div>
+    </aside>
+
+    <!-- ================================================ STAGE -->
+    <main class="stage split" id="stage">
+      <div class="mapwrap" id="mapwrap">
+        <div class="mapbar">
+          <select id="basemap2" title="подложка"></select>
+          <span class="scalebar"><i id="scalebar" style="width:60px"></i><span id="scaletext">—</span></span>
+          <button id="zoomfit" title="вписать">⤢</button>
+        </div>
+        <div class="maplegend" id="maplegend"></div>
+      </div>
+
+      <div class="gwrap">
+        <div class="ghead">
+          <div class="gcol">бригада / заявка</div>
+          <div class="gaxis" id="gaxis"></div>
+        </div>
+        <div class="gscroll" id="gscroll">
+          <div id="grows"></div>
+          <div class="empty" id="gempty">Нажмите «Считать» — матрица маршрутов считается в браузере на квантованной карте ЦФО.</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ================================================ RIGHT RAIL -->
+    <aside class="rail right">
+      <div class="panel">
+        <h3>Выбранное</h3>
+        <div class="dt" id="detail"><div class="note">Клик по заявке в сетке или по точке на карте.</div></div>
+      </div>
+
+      <div class="panel" style="flex:0 0 auto">
+        <h3>Воронка отказов</h3>
+        <div class="dt"><div class="funnel" id="funnel"></div>
+        </div>
+      </div>
+
+      <div class="panel" style="flex:1 1 auto">
+        <h3>Замеры <span class="k">в браузере</span></h3>
+        <div class="dt"><div class="steps" id="steps"></div>
+          <div class="note" id="truth"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="overlay" id="overlay" style="display:none">
+    <div class="obox">
+      <h2 id="ov-t">Считаю</h2>
+      <p id="ov-s">…</p>
+      <div class="obar"><i id="ov-bar" style="width:0"></i></div>
+      <div class="ostat"><span id="ov-k">0 / 0</span><span id="ov-ms"></span></div>
+      <div class="olog" id="ov-log"></div>
     </div>
   </div>
+</div>
+
+<link rel="stylesheet" href="./vendor/leaflet.css?v=80">
+<script src="./vendor/leaflet.js?v=80"></script>
+<script type="module" src="./app.js?v=80"></script>
 </body>
 </html>
