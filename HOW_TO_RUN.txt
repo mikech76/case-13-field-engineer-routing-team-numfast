@@ -7,3 +7,9 @@ Run:
 Needs only a static file server. No packages, no keys, no backend.
 Internet is used ONLY for the basemap tiles (Esri/OSM); all computation
 (marvel graph SSSP + S0 assignment) is local and works offline.
+
+Полная версия стенда лежит в корне репозитория:
+    index.html + app.js + lib/ + vendor/ + assets/map2/ + data/
+
+    python -m http.server 8080
+    open http://127.0.0.1:8080/
