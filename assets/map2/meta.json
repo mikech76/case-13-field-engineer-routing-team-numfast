@@ -1,0 +1,14 @@
+{
+ "C": 96144,
+ "V": 241348,
+ "E": 1035952,
+ "clusters": 96144,
+ "portal_verts": 241348,
+ "nonempty": 95923,
+ "step_ms": 1,
+ "INF": 4294967295,
+ "semantics": "cluster-to-cluster shortest path over the expanded portal graph, UNCAPPED entries/exits; intra-cluster snap legs are not modelled, so a same-cluster pair has no portal answer and the front uses the object anchor directly",
+ "units": "weights in exact ms; cg_d* in exact metres over the same edges in the same order",
+ "edges": "portal pf->pt = one CSR segment (length*1000/speed); interior ent[k]->ext[j] = exact interior ms / metres",
+ "caps": "entries capped at 24 (the 1.88M-node unreached blob); exits uncapped"
+}
