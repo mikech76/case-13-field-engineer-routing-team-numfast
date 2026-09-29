@@ -1,9 +1,7 @@
-// Copyright (c) 2026 NumFast
-// SPDX-License-Identifier: AGPL-3.0-only
 /* ui2/app.js — dispatcher lab front-2.
  *
  * Everything compute-heavy runs in the browser:
- *   - routing  : lib/router.worker.js?v=80  (numfast WASM SSSP over the MAP-FULL
+ *   - routing  : lib/router.worker.js?v=81  (numfast WASM SSSP over the MAP-FULL
  *                portal graph, 96 144 clusters / 241 348 vertices / 938 249
  *                edges, quantized 100 ms)
  *   - assignment: lib/s0.js             (port of the production S0 dispatcher:
@@ -11,11 +9,11 @@
  *
  * No backend. No Leaflet. No framework. Only the data bundle is fetched.
  */
-import { Map as CMap } from './lib/lmap.js?v=80';
+import { Map as CMap } from './lib/lmap.js?v=81';
 import {
   solve, makeRequest, makeTeam, makePortalTravel, WORK_DOCS,
 } from './lib/s0.js';
-import { loadTraffic, TRAFFIC_META } from './lib/traffic.js?v=80';
+import { loadTraffic, TRAFFIC_META } from './lib/traffic.js?v=81';
 
 // ------------------------------------------------------------------ consts
 const T0 = 480;             // 08:00
@@ -134,7 +132,7 @@ function idx() {
 
 // ------------------------------------------------------------------ worker
 function bootWorker() {
-  worker = new Worker('./lib/router.worker.js?v=80', { type: 'module' });
+  worker = new Worker('./lib/router.worker.js?v=81', { type: 'module' });
   worker.onmessage = (ev) => onWorker(ev.data);
   worker.onerror = (e) => {
     setChip('map', 'err', 'роутер: ' + (e.message || 'ошибка'));
@@ -143,7 +141,7 @@ function bootWorker() {
   setChip('map', 'busy', 'роутер: загрузка карты…');
   S.phase = 'init-sent';
   S.timing.t_boot = performance.now();
-  worker.postMessage({ cmd: 'init', base: MAP_BASE, wasm: './lib/numfast_native.wasm?v=80' });
+  worker.postMessage({ cmd: 'init', base: MAP_BASE, wasm: './lib/numfast_native.wasm?v=81' });
   expose();
 }
 
