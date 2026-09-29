@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NumFast — диспетчерская выездных инженеров</title>
+<style>
+  :root { --bg:#0f1117; --fg:#e9edf6; --fg2:#9aa3ba; --acc:#ff0053; --acc2:#fc3777; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:var(--bg); color:var(--fg);
+         font:16px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif; }
+  .box { max-width:720px; padding:48px; }
+  h1 { margin:0 0 6px; font-size:30px; letter-spacing:-.5px; }
+  .sub { color:var(--acc2); font-weight:600; margin-bottom:26px; }
+  p { color:var(--fg2); margin:0 0 14px; }
+  code { color:var(--fg); background:rgba(255,255,255,.07); padding:1px 6px; border-radius:3px;
+         font-family:ui-monospace, Consolas, monospace; font-size:14px; }
+  .k { display:inline-block; margin:4px 8px 0 0; padding:6px 12px; border-radius:5px;
+       border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04);
+       color:var(--fg); font-size:14px; }
+</style>
+</head>
+<body>
+  <div class="box">
+    <h1>NumFast — диспетчерская выездных инженеров</h1>
+    <div class="sub">ЛЦТ 2026 · задача 3 · Билайн Бизнес</div>
+    <p>Стенд разворачивается. Собственный счётчик маршрутов на библиотеке numfast:
+       квантованный дорожный граф Центрального Федерального округа, распределение
+       заявок и построение маршрутов считаются прямо в браузере — без бэкенда,
+       без внешних API.</p>
+    <p>Полная версия стенда — в каталоге <code>site/</code> репозитория.</p>
+    <div>
+      <span class="k">97 / 100 заявок</span>
+      <span class="k">323.6 км по дорогам</span>
+      <span class="k">0 нарушений</span>
+      <span class="k">98.9 % времён точных</span>
+    </div>
+  </div>
+</body>
+</html>
